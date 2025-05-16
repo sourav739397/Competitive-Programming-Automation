@@ -3,7 +3,7 @@
 set -e
 
 INSTALL_PATH="/usr/bin"
-SCRIPT_NAME="cp-run"
+SCRIPT_NAME="CP"
 SCRIPT_URL="https://raw.githubusercontent.com/sourav739397/All-In-ONE-cp/main/run.sh"
 
 echo "🚀 Starting CP script installer..."
