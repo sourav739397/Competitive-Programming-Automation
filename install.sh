@@ -4,7 +4,7 @@ set -e
 
 INSTALL_PATH="/usr/local/bin"
 SCRIPT_NAME="cprun"
-SCRIPT_URL="https://raw.githubusercontent.com/sourav739397/All-In-ONE-cp/main/run.sh"
+SCRIPT_URL="https://raw.githubusercontent.com/sourav739397/All-In-ONE-cp/main/cprun.sh"
 
 echo "Starting CP script installer......."
 
