@@ -205,19 +205,6 @@ if [[ "$mode" == "parse" ]]; then
     fi
     mkdir -p "$dir"
 
-    # check already have some sample in the directory 
-    # [specially important when parse problem in current dir and already have some sample of another one]
-    # index=$(ls "$dir"/sample*.in 2>/dev/null | wc -l)
-    # if [[ "$index" -ne 0 ]]; then
-    #     echo -e "  Found $index sample files"
-    #     read -p $'\033[1;33m  Press (Y) to keep this sample: \033[0m' choice
-        
-    #     if [[ "$choice" != "Y" && "$choice" != "y" ]]; then
-    #         rm -f "$dir"/sample*.{in,out}
-    #         index=0
-    #     fi
-    # fi
-
     # ((index++))
     rm -f "$dir"/sample*.{in,out}
     index=1
@@ -398,11 +385,7 @@ echo "--------------------------------------------------------------"
 
 exec 3<&- 4<&-  # Close file descriptors
 echo ""
-
-
-
-        fi
-        
+        fi 
     done
     # Display summary 
     echo -ne "\033[1;36m  Final Score: \033[0m"
