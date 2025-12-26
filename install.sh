@@ -3,7 +3,7 @@ set -e
 
 INSTALL_PATH="/usr/local/bin"
 SCRIPT_NAME="cprun"
-CPRUN_DIR="$HOME/.cprun"
+CPRUN_DIR="~/.cprun"
 
 SCRIPT_URL="https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Automation/main/cprun.sh"
 DEBUG_URL="https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Automation/main/debug.h"
