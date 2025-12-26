@@ -1,19 +1,36 @@
 #!/bin/bash
-
 set -e
 
 INSTALL_PATH="/usr/local/bin"
 SCRIPT_NAME="cprun"
-# Updated GitHub raw URL to point to the actual raw content of cprun.sh
+CPRUN_DIR="$HOME/.cprun"
+
 SCRIPT_URL="https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Automation/main/cprun.sh"
+DEBUG_URL="https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Automation/main/debug.h"
+TESTLIB_URL="https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Automation/main/testlib.h"
 
 echo "Starting CP script installer..."
 
-# Download the script from GitHub
-echo "Downloading script from GitHub..."
+# Create ~/.cprun directory
+echo "Creating $CPRUN_DIR ..."
+mkdir -p "$CPRUN_DIR"
+
+# Download headers
+echo "Downloading debug.h and testlib.h ..."
+curl -fsSL "$DEBUG_URL"   -o "$CPRUN_DIR/debug.h"
+curl -fsSL "$TESTLIB_URL" -o "$CPRUN_DIR/testlib.h"
+
+chmod 644 "$CPRUN_DIR/"*.h
+
+# Download main script
+echo "Downloading cprun script..."
 curl -fsSL "$SCRIPT_URL" -o "$INSTALL_PATH/$SCRIPT_NAME"
 
-# Make it executable
+# Make executable
 chmod +x "$INSTALL_PATH/$SCRIPT_NAME"
 
-echo "Installed: You can now use the script by typing: cprun"
+echo "Installation complete ✅"
+echo "• Script : cprun"
+echo "• Headers: $CPRUN_DIR/{debug.h,testlib.h}"
+echo
+echo "Run for help 👉  cprun --help"

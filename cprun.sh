@@ -1,368 +1,405 @@
 #!/bin/bash
 
-# Global flags for fast compile and debug compile
-fast_compile="g++ -fdiagnostics-color=always -std=c++23 -Wshadow -Wall -Wno-unused-result -O2 -o"
-# remove -D_GLIBCXX_DEBUG when you debug pbds
-debug_compile="g++ -DLOCAL -fdiagnostics-color=always -std=c++23 -Wshadow -Wall -g -fsanitize=address -fsanitize=undefined -fsanitize=signed-integer-overflow -D_GLIBCXX_DEBUG -o"
+# ==============================================
+#  Professional Competitive Programming Script
+# ==============================================
+#  Features:
+#  - Fast/Debug compilation modes
+#  - Test case parsing from Competitive Companion
+#  - Automated testing against samples
+#  - Stress testing with generator/validator
+#  - Multiple solutions checking
+#  - Time/memory measurement
+#  - Colorful output with icons
+#  - Comprehensive help system
+#  - self-update capability
+# ==============================================
 
-# Initialize default values
-mode=""
-cpp_file=""
-executable=""
-run_only=false
-add_testcase=false
-compile_script=$fast_compile
+# ================ CONFIGURATION ================
+VERSION="2.0"
+AUTHOR="sourav739397"
+CONTACT="sourav739397@gmail.com"
+SCRIPT_URL="https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Automation/main/cprun.sh"
 
-# stress testing and validation default value
-wrong="sol.cpp"
-judge="judge.cpp"
-generator="gen.cpp"
-totalTest=100
+# Global flags for compilation
+# (need change to mapfile for dynamic includes)
+mapfile -t INCLUDES < <(find ~/.cprun -type d -print0 | xargs -0 -I{} echo "-I{}")
+FAST_COMPILE=(g++ "${INCLUDES[@]}" -fdiagnostics-color=always -std=c++23 -Wshadow -Wall -Wno-unused-result -O2 -o)
+DEBUG_COMPILE=(g++ "${INCLUDES[@]}" -DLOCAL -fdiagnostics-color=always -std=c++23 -Wshadow -Wall -g -fsanitize=address -fsanitize=undefined -fsanitize=signed-integer-overflow -fno-omit-frame-pointer -D_GLIBCXX_DEBUG -o)
 
-# count number of test in this dir
-count=$(ls sample*.in 2>/dev/null | wc -l)
+# Default values
+CMD=""
+SOURCE_FILE=""
+ADD_TESTCASE=false
+TIMEOUT_DURATION=10  # seconds
+COMPILE_SCRIPT=("${FAST_COMPILE[@]}")
 
-# save all input file [NB : must use *.in]
-input_files=()
+# Stress testing defaults
+WRONG_SOLUTION="sol.cpp"
+SLOW_SOLUTION="slow.cpp"
+GENERATOR="gen.cpp"
+TEST_COUNT=5000
 
-# where problem will save (default : problem name, group : contest name, here : current dir)
-sample_dir="name" 
-
-# store specfic sample index for test 
-multiple_solution=false
-specific_tests=()
-contains() {
-    local value="$1"
-    for item in "${specific_tests[@]}"; do
-        if [[ "$item" == "$value" ]]; then
-            return 0
-        fi
-    done
-    return 1
-}
-
-# testcase checker (how testcase compare)
-normalize0() { # ignore case sensitive, trailling "\n" and spaces
-    tr '[:upper:]' '[:lower:]' | tr -s ' ' | sed 's/[[:space:]]*$//' | awk 'NF {print}'
-}
-
-help_menu() {
-    echo -e "\033[1;34m"
-    echo "╔══════════════════════════════════════════╗"
-    echo "║         SCRIPT USAGE HELP MENU           ║"
-    echo "╚══════════════════════════════════════════╝"
-    echo -e "\033[0m"
-    
-    echo -e "\033[1;33mUsage:\033[0m"
-    echo "  ./your_script.sh [options] <cpp-file>"
-    echo ""
-    
-    echo -e "\033[1;36mOptions:\033[0m"
-    echo -e "  -a               Add a new test case manually"
-    echo -e "  -d               Use the debug script for compilation. Execute block #indef LOCAL (Default: Fast compile)"
-    echo -e "  -r               Run only (skip compilation if executable exists)"
-    echo -e "  -m               Enable multiple solution checking (works in cp and stress mode)"
-    echo -e "                   1. --cp : write checker.cpp (checks if your solution and the given solution are the same under problem requirements)"  
-    echo -e "                   2. --stress : is validator or brute force solution"
-    echo -e "  --parse          Parse input test cases by Competitive Companion extension [here | group] (Default: problem name<blank>)"
-    echo -e "                   1. ''(blank), saves samples in a folder named after the problem"
-    echo -e "                   2. 'here' saves samples in the current directory"
-    echo -e "                   3. 'group' saves samples into contest/problem folders"
-    echo -e "  --cp             Check your output against sample test cases [test case index] (Default: All)"
-    echo -e "  --stress         Perform stress testing"
-    echo -e "                   formet : --stress <your sol> <brute force / validator> <generator> <number of Test>"
-    echo -e "                   1. brute force for unique solution"
-    echo -e "                   2. validator for multiple solution"
-    echo -e "                   default : --stress sol.cpp judge.cpp gen.cpp 100 (if you deferent name of file then just run with --stress)"
-    echo -e ""
-    echo -e "If no mode(--cp, --parse, --stress) is set, the script will run the executable with input from terminal or input file(*.in)"
-    echo -e "\033[1;35mExample:\033[0m"
-    echo -e "   ./your_script.sh --parse [parse the problem]"
-    echo -e "   ./your_script.sh --cp [check your output]"
-    echo -e "   ./your_script.sh --cp -m [check your output for multiple solution]"
-    echo -e "   ./your_script.sh --cp 1 2 3 [check specific test case]"
-    echo -e "   ./your_script.sh --stress [stress testing]"
-    echo ""
-}
-
-# Function to handle invalid arguments
-handle_invalid_argument() {
-    echo -e "\033[1;31mError:\033[0m Invalid argument detected."
-    echo -e "\033[1;33mAvailable options:\033[0m"
-    echo "--cp              Test your output"
-    echo "--parse           Parse problem set"
-    echo "--stress          Run stress testing"
-    echo ""
-    echo "Try './your_script.sh --help' for more information."
+# ================ SELF-UPDATE FEATURE ================
+show_version() {
+  echo -e "\033[1;36mcprun\033[0m version \033[1;32m$VERSION\033[0m"
+  echo -e "Author: $AUTHOR"
+  echo -e "Contact: $CONTACT"
+  
+  if [ -f "$VERSION_FILE" ]; then
+    local_commit=$(cat "$VERSION_FILE")
+    echo -e "Installed: \033[0;33m$local_commit\033[0m"
+  fi
 }
 
 
-# Parse the command-line arguments
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --help)
-            help_menu
-            exit 0
-            ;;
-        --cp)
-            mode="cp"
-            shift
-            while [[ $# -gt 0 && "$1" =~ ^[0-9]+$ ]]; do
-                specific_tests+=("$1")
-                shift
-            done
-            ;;
-        --parse)
-            mode="parse"
-            shift
-            if [[ -n "$1" && ("$1" == "here" || "$1" == "group") ]]; then
-                sample_dir="$1"
-                shift
-            fi
-            ;;
-        --stress)
-            mode="stress"
-            shift
-            if [[ -n "$1" && "$1" != -* ]]; then wrong="$1"; shift; fi
-            if [[ -n "$1" && "$1" != -* ]]; then judge="$1"; shift; fi
-            if [[ -n "$1" && "$1" != -* ]]; then generator="$1"; shift; fi
-            if [[ -n "$1" && "$1" != -* && $1 =~ ^[0-9]+$ ]]; then totalTest="$1"; shift; fi
-            ;;
-        -a) 
-            add_testcase=true;
-            shift
-            ;;
-        -d)
-            compile_script=$debug_compile
-            shift
-            ;;
-        -m)
-            multiple_solution=true
-            shift
-            ;;
-        -r)
-            run_only=true
-            shift
-            ;;
-        *.cpp)
-            cpp_file="$1"
-            shift
-            ;;
-        *.in)
-            input_files+=("$1")
-            shift
-            ;; 
-        *)
-            handle_invalid_argument 
-            exit 1
-            ;;
-    esac
-done
+show_help() {
+  cat << 'EOF'
+╔════════════════════════════════════════════════════════════════════╗
+║                   🏆 COMPETITIVE PROGRAMMING TOOL 🏆               ║
+╚════════════════════════════════════════════════════════════════════╝
 
-# parse the problem and exit 
-if [[ "$mode" == "parse" ]]; then
-    PORT=1327
-    echo -e "\033[1;33m󰮏  Click the 'Parse Task (+)' button in your browser\033[0m"
+📖 USAGE:
+  cprun [OPTIONS] <source_file.cpp>
 
-    data=$(
-        nc -l -p "$PORT" |                     # Listen for incoming request
-        tr -d '\r' | sed '1,/^$/d' |           # Remove HTTP headers
-        jq -c '.' 2>/dev/null                  # Parse and compact JSON
-    )
+🎯 COMMANDS:
+  --parse              Parse problem from Competitive Companion
+  --cp <file.cpp>      Compile and run all test cases
+  --add <file.cpp>     Add new test case interactively
+  --stress [args]      Run stress testing
+  --update             Check for updates and self-update
+  --version, -v        Show version information
+  --help, -h           Show this help message
 
-    if [ -z "$data" ]; then 
+🔧 OPTIONS:
+  -d                   Enable debug mode (sanitizers + debug symbols)
+
+📝 EXAMPLES:
+  cprun --parse                    # Parse from browser
+  cprun --cp solution.cpp          # Test solution
+  cprun --add solution.cpp         # Add custom test
+  cprun solution.cpp               # Compile and run
+  cprun -d solution.cpp            # Debug mode
+  cprun --stress sol.cpp slow.cpp gen.cpp 1000
+  cprun --update                   # Update to latest version
+
+🌐 MORE INFO:
+  GitHub: https://github.com/sourav739397/Competitive-Programming-Automation
+  Author: sourav739397@gmail.com
+
+EOF
+}
+
+# Parse problem from Competitive Companion
+parse_problem() {
+  local PORT=1327
+  echo -e "\033[1;33m󰮏\033[0m  Click the Parse Task in your browser"
+
+  # Listen for data from Competitive Companion
+  local data=$(nc -l -p "$PORT" | tr -d '\r' | sed '1,/^$/d' | jq -c '.' 2>/dev/null)
+
+  if [ -z "$data" ]; then 
     echo -e "\033[1;31m  No valid data received\033[0m"
-    exit 1
+    return 1
+  fi
+
+  # Extract problem information
+  local problem_name=$(echo "$data" | jq -r '.name')
+  local contest_name=$(echo "$data" | jq -r '.group')
+  local url=$(echo "$data" | jq -r '.url')
+  local tests=$(echo "$data" | jq '.tests')
+  local contest_number=$(echo "$url" | grep -oE '[0-9]+')
+
+  local time_limit_ms=$(echo "$data" | jq -r '.timeLimit')
+  local time_limit_sec=$(awk "BEGIN {printf \"%.3f\", $time_limit_ms/1000}")
+
+  # Debug print (optional):
+  # echo -e "\033[1;34m  Time Limit:\033[0m ${time_limit_sec} sec"
+
+  # Format names for filesystem
+  contest_name=$(echo "$contest_name" | sed -E 's/^[^ ]+ - (.*)$/\1/' | sed 's/[^a-zA-Z0-9 ]//g' | tr ' ' '_')
+  problem_name=$(echo "$problem_name" | sed 's/[^a-zA-Z0-9.]//g' | tr -d ' ')
+
+  # Codeforces specific formatting
+  if [[ "$contest_name" == *"Codeforces"* ]]; then 
+    contest_name="CF$contest_number"
+  fi    
+
+  if [[ -n "$SOURCE_FILE" ]]; then
+    problem_name="${SOURCE_FILE%.*}"
+  else
+    SOURCE_FILE="${problem_name}.cpp"
+    if [[ ! -f "$SOURCE_FILE" ]]; then
+      touch "$SOURCE_FILE"
     fi
 
-    # Parse problem data from the JSON
-    problem_name=$(echo "$data" | jq -r '.name')
-    contest_name=$(echo "$data" | jq -r '.group')
-    url=$(echo "$data" | jq -r '.url')
-    tests=$(echo "$data" | jq '.tests')
-    contest_number=$(echo "$url" | grep -oE '[0-9]+' )
+    # Open it in VS Code
+    code "$SOURCE_FILE"
+  fi
 
-    # Ensure that the problem and contest names are present
-    # if [ -z "$problem_name" ] || [ -z "$contest_name" ]; then
-    #     echo -e "\e\e[1;37m Missing problem or contest name !!\e[0m"
-    #     exit 1
-    # fi
+  # Determine directory structure
+  local dir="./.info"
+  
+  # Create directory
+  mkdir -p "$dir"
+  echo "$time_limit_sec" > "${dir}/${problem_name}_time_limit.txt"
 
-    # Format contest and problem names for directory naming
-    contest_name=$(echo "$contest_name" | sed -E 's/^[^ ]+ - (.*)$/\1/' | sed 's/[^a-zA-Z0-9 ]//g' | tr ' ' '_')
-    problem_name=$(echo "$problem_name" | sed 's/[^a-zA-Z0-9.]//g' | tr -d ' ')
+  # clean old test cases
+  rm -f $dir/${problem_name}_sample*.{in,out}
 
-    # for codeforces used short form of contest name [ex : CF2072]
-    # if you want full name just comment below line
-    if [[ "$contest_name" == *"Codeforces"* ]]; then contest_name="CF$contest_number"; fi    
+  # Save test cases with problem name prefix
+  local index=1
+  echo "$tests" | jq -c '.[]' | while read -r test; do
+    local input=$(echo "$test" | jq -r '.input')
+    local output=$(echo "$test" | jq -r '.output')
 
-    # Create directory structure to save test cases
-    dir="."
-    if [[ "$sample_dir" == "name" ]]; then
-        dir="${problem_name}"
-    elif [[ "$sample_dir" == "group" ]]; then
-        dir="${contest_name}/${problem_name}"
-    fi
-    mkdir -p "$dir"
+    echo "$input" > "${dir}/${problem_name}_sample${index}.in"
+    echo "$output" > "${dir}/${problem_name}_sample${index}.out"
+    # echo -e "󰄲  Saved: ${problem_name}_sample${index}.in & ${problem_name}_sample${index}.out"
+    ((index++))
+  done
 
-    # ((index++))
-    rm -f "$dir"/sample*.{in,out}
-    index=1
-    # Loop through each test case and save input/output files
-    echo "$tests" | jq -c '.[]' | while read -r test; do
-        input=$(echo "$test" | jq -r '.input')
-        output=$(echo "$test" | jq -r '.output')
+  local total=$(ls "$dir/${problem_name}_sample"*.in 2>/dev/null | wc -l)
+  echo -e "\033[1;32m  Sample saved:\033[0m $problem_name.cpp\033[1;35m[$total]\033[0m"
+  exit 0
+}
 
-        # Save input and output to respective files
-        echo "$input" > "${dir}/sample${index}.in"
-        echo "$output" > "${dir}/sample${index}.out"
-        echo -e "\033[0;37m󰄲  Saved ${dir}/sample${index}.in & ${dir}/sample${index}.out\033[0m"
-        ((index++))
-    done
+# Compile a source file
+compile_file() {
+  local source_file=$1
+  local executable=$2
+  
+  echo -e "\033[1;35m  Compiling:\033[0m $source_file"
 
-    echo -e "\033[1;37m  All test cases saved for: $problem_name\033[0m"
+  # Compile the source file
+  "${COMPILE_SCRIPT[@]}" $executable $source_file &> compilation.log
 
-    # Exit after processing the data
-    exit 0
-fi
+  # Check for compilation errors
+  if grep -q "error:" compilation.log; then
+    echo -e "\033[1;31m  Compilation failed:\033[0m $source_file"
+    # cat compilation.log | grep "error:"
+    cat compilation.log
+    rm -f compilation.log
+    return 1
+  fi
 
-# add test case manually
-if [[ "$add_testcase" == true ]]; then
-    echo -e "\033[0;37m  Adding a new test case...\033[0m"
+  # Check for warnings
+  if grep -q "warning:" compilation.log; then
+    echo -e "\033[1;33m  Compilation warning:\033[0m $source_file"
+    cat compilation.log | grep "warning:"
+  fi
+  rm -f compilation.log
+  echo -e "\033[1;32m󰄲  Compilation successful:\033[0m $source_file"
+  return 0
+}
+
+
+# Run test cases against solution
+run_test() {
+  local executable=$1
+  local total_tests=0
+  local passed_tests=0
+  
+  # Read timeout duration from time limit file
+  local problem_name="$executable"
+  local time_limit_file="./.info/${problem_name}_time_limit.txt"
+  local timeout_duration="$TIMEOUT_DURATION"
+  
+  if [[ -f "$time_limit_file" ]]; then
+    timeout_duration=$(cat "$time_limit_file")
+  fi
     
-    # Generate new filenames
-    new_input_file="sample$((count + 1)).in"
-    new_output_file="sample$((count + 1)).out"
+  for input_file in $(ls ./.info/${executable}_sample*.in 2>/dev/null | sort -V); do
+    [[ -f "$input_file" ]] || continue
+      
+    local index="${input_file//[^0-9]/}"
+    local output_file="${input_file%.in}.out"
+      
+    ((total_tests++))
+      
+    # Check if output file exists
+    if [[ ! -f "$output_file" ]]; then
+      echo -e "\033[1;31m  Missing output for test $index!\033[0m"
+      ((failed_tests++))
+      continue
+    fi
+      
+    # Run the solution
+    local start_time=$(date +%s%N)
+    local timeout_cmd="timeout $timeout_duration"
+    $timeout_cmd ./"$executable" < "$input_file" > output.out
     
-    # Prompt user for input and output file content
-    echo -e "\033[1;33m  Enter input (Ctrl + D to save):\033[0m"
-    cat > "$new_input_file"  # Redirect user input to new input file
+    local exit_code=$?
+    local end_time=$(date +%s%N)
+    local execution_time=$(((end_time - start_time) / 1000000))
+    
+    # Handle timeout
+    if (( exit_code == 124 )); then
+      echo -e "\033[1;37m󱫌  Sample Test #$index:\033[0m \033[1;33mTIME LIMIT EXCEEDED\033[0m (\033[0;33mTime: ${execution_time}ms\033[0m)"
+      # ((failed_tests++))
+      continue
+    fi
+      
+    # Handle runtime errors
+    if (( exit_code != 0 )); then
+      echo -e "\033[1;37m  Test #$index:\033[0m \033[1;31mRUNTIME ERROR\033[0m"
+      if [[ -s runtime.err ]]; then
+        echo -e "\033[31m$(cat runtime.err)\033[0m"
+      fi
+      # ((failed_tests++))
+      continue
+    fi
+        
+    # Compare outputs
+    if cmp -s <(normalize_output < output.out) <(normalize_output < "$output_file"); then
+      ((passed_tests++))
+      echo -e "\033[1;37m󰄲  Sample Test #$index:\033[0m \033[1;32mACCEPTED\033[0m (\033[0;33mTime: ${execution_time}ms\033[0m)"
+    else
+      echo -e "\033[1;37m  Sample Test #$index:\033[0m \033[1;31mWRONG ANSWER\033[0m (\033[0;33mTime: ${execution_time}ms\033[0m)"
+      echo -e "\033[4;36m  Input:\033[0m"
+      cat  "$input_file"
+      print_comparison "$output_file" "output.out"
+    fi
+  done
+    
+  # Cltimeout_durationeanup
+  rm -f output.out runtime.err "$executable" 2>/dev/null
+  
+  echo -ne "\033[1;36m  Final Score: \033[0m"
+  echo -e "\033[1;31m$((total_tests - passed_tests))\033[0m /\033[1;32m $passed_tests\033[0m / \033[1;37m$total_tests\033[0m"
+}
 
-    echo -e "\033[1;33m  Enter expected output (Ctrl + D to save):\033[0m"
-    cat > "$new_output_file"  # Redirect user input to new output file
 
-    echo "󰄲  Test case added successfully"
-    echo -e "\033[0;37m  Saved $new_input_file & $new_output_file.out\033[0m"
+# Add a new test case interactively
+add_test_case() {
+  local problem_name="${SOURCE_FILE%.*}"
+  local count=$(ls ./.info/${problem_name}_sample*.in 2>/dev/null | wc -l)
+  local new_input="./.info/${problem_name}_sample$((count + 1)).in"
+  local new_output="./.info/${problem_name}_sample$((count + 1)).out"
+  
+  echo -e "\033[0;33m \033[0m Enter input:"
+  cat > "$new_input"
+  
+  echo -e "\033[0;33m \033[0m Enter expected output:"
+  cat > "$new_output"
 
-    # Increment count for future test cases
-    count=$((count + 1))
-fi
+  echo -e "\033[1;32m  Sample saved:\033[0m $problem_name.cpp\033[1;35m[$((count + 1))]\033[0m"
+  # echo -e "\033[1;32m  Test case added:\033[0m $new_input & $new_output"
+}
 
-if [[ "$mode" != "stress" ]]; then
-    # If no cpp file is provided, no further action can be taken
-    if [[ -z "$cpp_file" || ! -f "$cpp_file" ]]; then
-        echo -e "\033[0;31m  No C++ file provided or file not found\033[0m"
-        exit 1
+
+# Run stress testing
+stress_test() {
+  # Compile all required files
+  if ! compile_file "$WRONG_SOLUTION" "wrong"; then return 1; fi
+  if ! compile_file "$SLOW_SOLUTION" "slow"; then return 1; fi
+  if ! compile_file "$GENERATOR" "generator"; then return 1; fi
+
+  # local anim_frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')  # Braille spinner
+  # local anim_frames=('◇' '◆' '◇' '◆')
+  # local anim_frames=('|' '/' '-' '\\')  # Classic spinner
+  # local anim_frames=('◐' '◓' '◑' '◒')  # Circle spinner
+  # local anim_frames=('▖' '▘' '▝' '▗')  # Quarter block spinner
+  # local anim_frames=('⠁' '⠂' '⠄' '⡀' '⢀' '⠠' '⠐' '⠈')  # Dots spinner
+  # local anim_frames=('O~~~~' '~O~~~' '~~O~~' '~~~O~' '~~~~O')  # Dots spinner
+  # Pacman animation frames (for fun)
+  local anim_frames=('ᗧ···' 'ᗧ··' 'ᗧ·' 'ᗧ' 'C·' 'ᗤ·' 'ᗤ··' 'ᗤ···')
+  # local anim_frames=('⠋~O~~~ ' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+  local anim_index=0
+  local num_frames=${#anim_frames[@]}
+
+  for ((testNum=1; testNum<=TEST_COUNT; testNum++)); do
+    # Animation
+    if (( testNum % 50 == 0 )); then  # Update animation every 50 tests
+      anim_char="${anim_frames[anim_index]}"
+      printf "\r\033[1;34m  Stress testing:\033[0m [%d/%d] %s" "$testNum" "$TEST_COUNT" "$anim_char"
+      anim_index=$(( (anim_index + 1) % num_frames ))
     fi
 
-    executable="${cpp_file%.cpp}"
-    if [[ "$run_only" == false || ! -f "$executable" ]]; then
-        $compile_script "$executable" "$cpp_file" &> compilation_output.log
+    # Generate test case
+    ./generator > input
+    ./slow < input > outSlow
+    ./wrong < input > outWrong
+    if ! cmp -s "outWrong" "outSlow"; then
+      echo -e "\033[1;31m  WRONG ANSWER:\033[0m test #$testNum"
+      echo -e "\033[4;36m  Input:\033[0m"
+      cat input
+      print_comparison "outSlow" "outWrong"
 
-        # Check for compilation errors
-        if grep -q "error:" compilation_output.log; then
-            echo -e "\033[1;31m  Compilation failed\033[0m"
-            cat compilation_output.log | grep "error:"
-            rm -f compilation_output.log
-            exit 1
-        fi
+      # Ask if the user wants to save it
+      echo -ne "\033[1;33m󰡯\033[0m  Save failed test case? (y/N):"
+      read -r choice
+      if [[ "$choice" =~ ^[Yy]$ ]]; then
+        save_failed_test "input" "outSlow" "$WRONG_SOLUTION"
+      fi
 
-        # Check for warnings
-        if grep -q "warning:" compilation_output.log; then
-            echo -e "\033[1;33m  Compilation warning\033[0m"
-            cat compilation_output.log | grep "warning:"
-        fi
-        rm -f compilation_output.log
-    fi
-fi
+      rm -f wrong judge generator input outSlow outWrong 2>/dev/null
+      exit
+    fi      
+  done
+  # Clear animation line after loop
+  echo -ne "\r\033[K"
+  echo -e "\033[1;32m󰄲  Passed:\033[0m $TEST_COUNT tests successfully!"
 
-# Handle CP (Competitive Programming) mode
-if [[ "$mode" == "cp" ]]; then
-    echo -e "\n\033[1;34m  Winter is coming.......\033[0m"
+  # Cleanup
+  rm -f wrong judge generator input outSlow outWrong 2>/dev/null
+}
 
-    # Initialize counters
-    total_tests=0
-    passed_tests=0
-    for input_file in $(ls sample*.in 2>/dev/null | sort -V); do
-        [[ -f "$input_file" ]] || continue  # Skip if no sample files exist
 
-        index="${input_file//[^0-9]/}"  # input file index
+# save failed test by stress test
+save_failed_test() {
+  local input=$1 output=$2 problem_name=$3
+  problem_name="${problem_name%.*}"
+  local dir="./.info"
+  mkdir -p "$dir"
 
-        if [[ ${#specific_tests[@]} -gt 0 ]] && ! contains "$index"; then
-            continue  # Skip this test case if it's not in the specified list
-        fi
+  local prefix="$dir/${problem_name}_sample$(( $(ls "$dir/${problem_name}_sample"*.in 2>/dev/null | wc -l) + 1 ))"
 
-        output_file="${input_file%.in}.out"
-        if [[ ! -f "$output_file" ]]; then
-            echo -e "\033[0;31m  Error: Output file for test case $index not found!\033[0m"
-            continue
-        fi
+  cp "$input" "${prefix}.in"
+  cp "$output" "${prefix}.out"
 
-        ((total_tests++))  # Increment total test count
+  local total=$(ls "$dir/${problem_name}_sample"*.in 2>/dev/null | wc -l)
+  echo -e "\033[1;32m  Sample saved:\033[0m $problem_name.cpp\033[1;35m[$total]\033[0m"
+}
 
-        # Measure execution time of the code
-        start_time=$(date +%s%N)
-        ./"$executable" < "$input_file" > output.out
-        exit_code=$?
-        end_time=$(date +%s%N)
-        execution_time=$((($end_time - $start_time) / 1000000))  # Time in milliseconds
-        
-        # checking runtime error 
-        if [[ $exit_code -ne 0 ]]; then
-            echo -e "\033[1;37m  Sample Test #$index:\033[0m \033[1;31mRUNTIME ERROR\033[0m"
-            continue
-        fi
 
-        if [[ "$multiple_solution" == true ]]; then
-            # multiple solution 
-            if [[ ! -f "checker.cpp" ]]; then
-                echo -e "\033[0;31m  checker.cpp is required for multiple solution [-m]\033[0m"
-                exit 1
-            fi
+# Format time in human readable way
+format_time() {
+  local ms=$1
+  if (( ms < 1000 )); then
+    echo "${ms}ms"
+  else
+    echo "$((ms/1000)).$((ms%1000/100))s"
+  fi
+}
 
-            $compile_script checker checker.cpp
-            if [[ ! -f "checker" ]]; then
-                echo -e "\033[1;31m  Compilation failed\033[0m"
-                exit 1
-            fi
+# Normalize output for comparison
+normalize_output() {
+  tr '[:upper:]' '[:lower:]' | tr -s ' ' | sed 's/[[:space:]]*$//' | awk 'NF {print}'
+}
 
-            ./checker < output.out > tmp1.out # unique solution
-            mv tmp1.out output.out 
+# Print test case comparison side by side
+print_comparison() {
+  local expected="$1"
+  local actual="$2"
 
-            ./checker < "$output_file" > tmp2.out
-            output_file="tmp2.out"
-            rm -f checker
-        fi
-        
-        # if cmp -s output.out "$output_file"; then
-        if cmp -s <(normalize0 < output.out) <(normalize0 < "$output_file"); then
-            ((passed_tests++))
-            echo -e "\033[1;37m󰄲  Sample Test #$index:\033[0m \033[1;32mACCEPTED\033[0m (\033[1;33mTime: ${execution_time}ms\033[0m)"
-        else
-            echo -e "\033[1;37m  Sample Test #$index:\033[0m \033[1;31mWRONG ANSWER\033[0m (\033[1;33mTime: ${execution_time}ms\033[0m)"
-            echo -e "\033[4;36m\nInput:\033[0m"
-            cat  "$input_file"
-            
-            echo ""
+  local expected_lines actual_lines max_file_lines
+  expected_lines=$(wc -l < "$expected")
+  actual_lines=$(wc -l < "$actual")
+  max_file_lines=$(( expected_lines > actual_lines ? expected_lines : actual_lines ))
 
-# echo -e "\033[4;36mComparison:\033[0m"
+  # echo -e "\033[4;36m  Comparison:\033[0m"
+  line_num=1  # Start line numbering
+  exec 3<"$expected" 4<"$actual"  # Open files for reading
 
-line_num=1  # Start line numbering
-exec 3<"$output_file" 4<"output.out"  # Open files for reading
+  # Print the top border and column headers
+  echo "┌────┬────────────────────────────────────┬────────────────────────────────────┐"
+  echo -e  "│ L  │            \033[1;35mOutput\033[0m                  │              \033[1;33mExpected\033[0m              │"
+  echo "└────┴────────────────────────────────────┴────────────────────────────────────┘"
 
-# Print the top border and column headers
-echo "--------------------------------------------------------------"
-echo -e "| L  |         \033[1;35mOutput\033[0m            |        \033[1;33mExpected\033[0m           |"
-echo "--------------------------------------------------------------"
-
-while true; do
+  while (( line_num <= max_file_lines )); do
     read -r o_line <&3
     read -r a_line <&4
-    
-    # Check if both files reached EOF
-    if [[ -z "$o_line" && -z "$a_line" ]]; then
-        break
-    fi
 
     # If one line is empty, print it as blank
     [[ -z "$o_line" ]] && o_line=" "  
@@ -370,139 +407,121 @@ while true; do
 
     # Apply colors to only the Output column
     if [[ "$o_line" == "$a_line" ]]; then
-        # Green for matching lines in Output
-        printf "| %-2s | \033[0;32m%-25s\033[0m | %-25s |\n" "$line_num" "$a_line" "$o_line"
+      # Green for matching lines in Output
+      printf "│ %-2s │ \033[0;32m%-34s\033[0m │ %-34s │\n" "$line_num" "$a_line" "$o_line"
     else
-        # Red for differing lines in Output
-        printf "| %-2s | \033[0;31m%-25s\033[0m | %-25s |\n" "$line_num" "$a_line" "$o_line"
+      # Red for differing lines in Output
+      printf "│ %-2s │ \033[0;31m%-34s\033[0m │ %-34s │\n" "$line_num" "$a_line" "$o_line"
     fi
 
-    ((line_num++))  # Increment line number
+    ((line_num++))
+  done
+  echo "└────┴────────────────────────────────────┴────────────────────────────────────┘"
+  exec 3<&- 4<&-  # Close file descriptors
+}
+
+
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h)
+      show_help
+      exit 0
+      ;;
+    --version|-v)
+      show_version
+      exit 0
+      ;;
+    --parse)
+      CMD="parse"
+      shift
+      if [[ -n "$1" && ("$1" == "here" || "$1" == "group") ]]; then
+        SAMPLE_DIR="$1"
+        shift
+      fi
+      ;;
+    --cp)
+      CMD="cp"
+      shift
+      ;;
+    --stress)
+      CMD="stress"
+      shift
+      # Handle optional arguments
+      if [[ -n "$1" && "$1" != -* ]]; then WRONG_SOLUTION="$1"; shift; fi
+      if [[ -n "$1" && "$1" != -* ]]; then SLOW_SOLUTION="$1"; shift; fi
+      if [[ -n "$1" && "$1" != -* ]]; then GENERATOR="$1"; shift; fi
+      if [[ -n "$1" && "$1" != -* && $1 =~ ^[0-9]+$ ]]; then TEST_COUNT="$1"; shift; fi
+      ;;
+    --add)
+      CMD="add"
+      shift
+      ;;
+    -d)
+      COMPILE_SCRIPT=("${DEBUG_COMPILE[@]}")
+      shift
+      ;;
+    *.cpp|*.c)
+      SOURCE_FILE="$1"
+      shift
+      ;;
+    *)
+      echo -e "\033[1;31m  Unknown option: $1\033[0m"
+      show_help
+      exit 1
+      ;;
+  esac
 done
 
-# Print the bottom border
-echo "--------------------------------------------------------------"
-
-exec 3<&- 4<&-  # Close file descriptors
-echo ""
-        fi 
-    done
-    # Display summary 
-    echo -ne "\033[1;36m  Final Score: \033[0m"
-    echo -e "\033[1;31m$((total_tests - passed_tests))\033[0m /\033[1;32m $passed_tests\033[0m / \033[1;37m$total_tests\033[0m"
-
-    rm -f output.out tmp2.out # remove output of test case
-    exit 0
-fi
-
-# Handle stress testing mode
-if [[ "$mode" == "stress" ]]; then
-    
-    # Compile all necessary files
-    $compile_script wrong "$wrong"
-    $compile_script judge "$judge"
-    $compile_script generator "$generator"
-
-    # Check if compilation was successful
-    if [[ ! -f "wrong" || ! -f "judge" || ! -f "generator" ]]; then
-        echo -e "\033[1;31m  Compilation failed\033[0m"
-        exit 1
+# Main execution
+case "$CMD" in
+  "parse")
+    parse_problem
+    ;;
+  "cp")
+    if [[ -z "$SOURCE_FILE" ]]; then
+      echo -e "\033[1;31m  No source file specified for testing!\033[0m"
+      exit 1
     fi
 
-    # echo -e "\033[1;34m  Running stress testing...\033[0m"
-    echo -e "\033[1;34m  You win or you die.......\033[0m"
-    
-    # Run the stress testing for $totalTest times
-    for ((testNum=1; testNum<=totalTest; testNum++)); do
-        ./generator > input # Generate input file
-        ./wrong < input > outWrong # answer from my solution
-
-        bad=false
-
-        if [[ "$multiple_solution" == true ]]; then
-            # multiple solution
-            cat input outWrong > data # merge input and output
-            ./judge < data > outJudge # answer from judge solution
-            if [[ "$(cat outJudge)" != "AC" ]]; then
-                echo -e "\033[0;31m  Error found in test #$testNum!\n\033[0m"
-                echo -e "\033[4;36mInput:\033[0m"
-                cat input
-                # echo -e "\033[4;31mWrong Output:\033[0m"
-                # cat outWrong
-                echo -e "\033[4;35mJudge Result:\033[0m"
-                cat outJudge
-                rm -f wrong judge generator input outJudge outWrong data
-                exit 1
-            fi
-        else
-            ./judge < input > outJudge
-            if !(cmp -s "outWrong" "outJudge") 
-            then
-                echo -e "\033[0;31m  Error found in test #$testNum!\n\033[0m"
-                echo -e "\033[4;36mInput:\033[0m"
-                cat input
-                echo -e "\033[4;31mWrong Output:\033[0m"
-                cat outWrong
-                echo -e "\033[4;32mExpected Output:\033[0m"
-                cat outJudge
-
-                echo -ne "\n\033[1;33m  Do you want to add this test case? (Y/N): \033[0m"
-                read -r isAdd
-
-                if [[ "$isAdd" != "N" && "$isAdd" != "n" ]]; then
-                    input_file="sample$((count + 1)).in"
-                    output_file="sample$((count + 1)).out"
-                    cp input "$input_file"
-                    cp outJudge "$output_file"
-                    echo "  Saved $input_file & $output_file.out"
-                else
-                    echo -e "  Skipped"
-                fi
-                rm -f wrong judge generator input outJudge outWrong
-                exit 1
-            fi
-        fi
-    done
-
-    echo -e "\033[1;32m󰄲  Passed $totalTest tests successfully!\033[0m"
-
-    # Cleanup temporary files
-    rm -f wrong judge generator input outJudge outWrong data 
-    exit 0
-fi
-
-
-# if no mode set run the executable with input from terminal or input file [run one by one from input_files=()]
-if [[ ${#input_files[@]} -eq 0 ]]; then
-    echo -e "\033[1;33m  Enter input:\033[0m"
-    ./"$executable" > output.out
-    exit_code=$?
-    if [[ $exit_code -ne 0 ]]; then
-        echo -e "\033[1;31m  RUNTIME ERROR\033[0m"
-    else
-        echo -e "\033[4;35mOutput:\033[0m"
-        cat output.out
-        rm -f output.out
+    # Complile
+    executable="${SOURCE_FILE%.*}"
+    if ! compile_file "$SOURCE_FILE" "$executable"; then
+      exit 1
     fi
-else
-    for input_file in "${input_files[@]}"; do
-        echo -e "\033[1;34m  Running with input: $input_file\033[0m"
-        # Measure execution time of the code
-        start_time=$(date +%s%N) 
-        ./"$executable" < "$input_file" > output.out
-        exit_code=$?
-        end_time=$(date +%s%N)   
-        execution_time=$((($end_time - $start_time) / 1000000))
-        if [[ $exit_code -ne 0 ]]; then
-            echo -e "\033[1;31m  RUNTIME ERROR\033[0m"
-            echo -e "\033[4;36mInput:\033[0m"
-            cat "$input_file"
-        else
-            echo -e "\033[4;35mOutput:\033[0m"
-            cat output.out
-            echo -e "\033[1;33m󱦟 Time: $execution_time ms\033[0m"
-            rm -f output.out
-        fi
-    done
-fi
+
+    # Checking test cases
+    run_test "$executable"
+    exit 0
+    ;;
+  "add")
+    if [[ -z "$SOURCE_FILE" ]]; then
+      echo -e "\033[1;31m  No source file specified for adding test cases!\033[0m"
+      exit 1
+    fi
+    add_test_case
+    exit 0
+    ;;
+  "stress")
+    stress_test
+    exit $?
+    ;;
+  *)
+    # Default mode - run the program
+    if [[ -z "$SOURCE_FILE" ]]; then
+      echo -e "\033[1;31m  No source file specified!\033[0m"
+      show_help
+      exit 1
+    fi
+    executable="${SOURCE_FILE%.*}"
+    if ! compile_file "$SOURCE_FILE" "$executable"; then
+      exit 1
+    fi  
+    echo -e "\033[1;34m  Running:\033[0m $SOURCE_FILE"
+    timeout --foreground 20 ./$executable # change runtime / remove
+    rm -f "$executable" 2>/dev/null
+    ;;
+esac
+
 exit 0
