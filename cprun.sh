@@ -54,7 +54,7 @@ show_version() {
 
 
 show_help() {
-  cat << 'EOF'
+  echo -e "
 ╔════════════════════════════════════════════════════════════════════╗
 ║                   🏆 COMPETITIVE PROGRAMMING TOOL 🏆               ║
 ╚════════════════════════════════════════════════════════════════════╝
@@ -62,33 +62,68 @@ show_help() {
 📖 USAGE:
   cprun [OPTIONS] <source_file.cpp>
 
-🎯 COMMANDS:
+\033[0;33m COMMANDS:\033[0m
   --parse              Parse problem from Competitive Companion
   --cp <file.cpp>      Compile and run all test cases
   --add <file.cpp>     Add new test case interactively
   --stress [args]      Run stress testing
-  --update             Check for updates and self-update
-  --version, -v        Show version information
+  --update             Update Script, debug.h, testlib.h, etc.
   --help, -h           Show this help message
 
 🔧 OPTIONS:
-  -d                   Enable debug mode (sanitizers + debug symbols)
+  -d                   Enable debug mode (sanitizers + all debug output)
 
-📝 EXAMPLES:
-  cprun --parse                    # Parse from browser
-  cprun --cp solution.cpp          # Test solution
-  cprun --add solution.cpp         # Add custom test
-  cprun solution.cpp               # Compile and run
-  cprun -d solution.cpp            # Debug mode
-  cprun --stress sol.cpp slow.cpp gen.cpp 1000
-  cprun --update                   # Update to latest version
+#  EXAMPLES:
+#   cprun --parse                    # Parse from browser
+#   cprun --cp solution.cpp          # Test solution
+#   cprun --add solution.cpp         # Add custom test
+#   cprun solution.cpp               # Compile and run
+#   cprun -d solution.cpp            # Debug mode
+#   cprun --stress sol.cpp slow.cpp gen.cpp 1000 # Stress test
+#   cprun --update                   # Update to latest version
 
-🌐 MORE INFO:
+ MORE INFO:
   GitHub: https://github.com/sourav739397/Competitive-Programming-Automation
   Author: sourav739397@gmail.com
-
-EOF
+"
 }
+
+# show_help() {
+#   cat << 'EOF'
+# ╔════════════════════════════════════════════════════════════════════╗
+# ║                   🏆 COMPETITIVE PROGRAMMING TOOL 🏆               ║
+# ╚════════════════════════════════════════════════════════════════════╝
+
+# 📖 USAGE:
+#   cprun [OPTIONS] <source_file.cpp>
+
+#  \033[1;36m COMMANDS:\033[0m
+#   --parse              Parse problem from Competitive Companion
+#   --cp <file.cpp>      Compile and run all test cases
+#   --add <file.cpp>     Add new test case interactively
+#   --stress [args]      Run stress testing
+#   --update             Check for updates and self-update
+#   --version, -v        Show version information
+#   --help, -h           Show this help message
+
+# 🔧 OPTIONS:
+#   -d                   Enable debug mode (sanitizers + debug symbols)
+
+#  EXAMPLES:
+#   cprun --parse                    # Parse from browser
+#   cprun --cp solution.cpp          # Test solution
+#   cprun --add solution.cpp         # Add custom test
+#   cprun solution.cpp               # Compile and run
+#   cprun -d solution.cpp            # Debug mode
+#   cprun --stress sol.cpp slow.cpp gen.cpp 1000
+#   cprun --update                   # Update to latest version
+
+#  MORE INFO:
+#   GitHub: https://github.com/sourav739397/Competitive-Programming-Automation
+#   Author: sourav739397@gmail.com
+
+# EOF
+# }
 
 # Parse problem from Competitive Companion
 parse_problem() {
@@ -433,6 +468,10 @@ while [[ $# -gt 0 ]]; do
       show_version
       exit 0
       ;;
+    --update)
+      sh -c "$(curl -fsSL https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Automation/main/install.sh)"
+      exit 0
+      ;;
     --parse)
       CMD="parse"
       shift
@@ -468,7 +507,8 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo -e "\033[1;31m  Unknown option: $1\033[0m"
-      show_help
+      echo -e "\033[1;34m\033[0m  Use \033[1;34m\"cprun --help\"\033[0m to see available options."
+      # show_help
       exit 1
       ;;
   esac
@@ -520,7 +560,7 @@ case "$CMD" in
     fi  
     echo -e "\033[1;34m  Running:\033[0m $SOURCE_FILE"
     timeout --foreground 20 ./$executable # change runtime / remove
-    rm -f "$executable" 2>/dev/null
+    # rm -f "$executable" 2>/dev/null
     ;;
 esac
 
