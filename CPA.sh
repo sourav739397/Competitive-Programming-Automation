@@ -489,7 +489,7 @@ case "$CMD" in
     ;;
   "test")
     if [[ -z "$SOURCE_FILE" ]]; then
-      echo -e "\033[1;31m  No source file:\033[0m for help run \033[1;37m\"CPA --help\"\033[0m"
+      echo -e "\033[1;31m  No source file:\033[0m For help run \033[1;37m\"CPA --help\"\033[0m"
       exit 1
     fi
 
@@ -505,7 +505,7 @@ case "$CMD" in
     ;;
   "add")
     if [[ -z "$SOURCE_FILE" ]]; then
-      echo -e "\033[1;31m  No source file:\033[0m for help run \033[1;37m\"CPA --help\"\033[0m"
+      echo -e "\033[1;31m  No source file:\033[0m For help run \033[1;37m\"CPA --help\"\033[0m"
       exit 1
     fi
     add_test_case
@@ -518,7 +518,7 @@ case "$CMD" in
   *)
     # Default mode - run the program
     if [[ -z "$SOURCE_FILE" ]]; then
-      echo -e "\033[1;31m  No source file:\033[0m for help run \033[1;37m\"CPA --help\"\033[0m"
+      echo -e "\033[1;31m  No source file:\033[0m For help run \033[1;37m\"CPA --help\"\033[0m"
       exit 1
     fi
     executable="${SOURCE_FILE%.*}"
