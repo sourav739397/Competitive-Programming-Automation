@@ -5,6 +5,7 @@ INSTALL_PATH="/usr/local/bin"
 SCRIPT_NAME="CPA"
 CPA_DIR="$HOME/.CPA"
 
+# URLS TO DOWNLOAD FILES
 SCRIPT_URL="https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Assistant/main/CPA.sh"
 DEBUG_URL="https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Assistant/main/debug.h"
 TESTLIB_URL="https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Assistant/main/testlib.h"
@@ -37,19 +38,12 @@ check_dependency() {
 check_dependency
 
 echo -e "\033[1;36m  Installing Competitive-Programming-Assistant:\033[0m"
-
-# Create ~/.CPA directory (always succeeds as it's in user's HOME)
+# =============== CREATE CPA DIRECTORY ================
 echo -e "   [\033[0;32m✓\033[0m] Created $CPA_DIR"
 mkdir -p "$CPA_DIR"
 
-# # Download headers to user directory
-# echo -e "   [\033[0;36m-\033[0m] Downloading header files..."
-# curl -fsSL "$DEBUG_URL"   -o "$CPA_DIR/debug.h"
-# curl -fsSL "$TESTLIB_URL" -o "$CPA_DIR/testlib.h"
-# echo -e "   [\033[0;32m✓\033[0m] Downloaded headers to $CPA_DIR"
-# chmod 644 "$CPA_DIR/"*.h
 
-# Download headers to user directory
+# ============== DOWNLOAD HEADER FILES ==============
 echo -ne "   [\033[0;36m-\033[0m] Downloading header files"
 (
   curl -fsSL "$DEBUG_URL"   -o "$CPA_DIR/debug.h" 2>/dev/null &&
@@ -65,6 +59,7 @@ while kill -0 "$PID" 2>/dev/null; do
   sleep 0.3
 done
 wait "$PID"
+# chmod 644 "$CPA_DIR/"*.h
 
 echo -e "\r\033[K   [\033[0;32m✓\033[0m] Downloaded headers to $CPA_DIR"
 
