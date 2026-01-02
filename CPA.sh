@@ -79,7 +79,6 @@ USAGE: CPA [OPTIONS] [COMMAND] <source_file.cpp>
   Author: sourav739397@gmail.com
   GitHub: https://github.com/sourav739397/Competitive-Programming-Assistant
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 EOF
 }
 
