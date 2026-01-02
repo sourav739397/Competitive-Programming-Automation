@@ -71,5 +71,5 @@ echo -e "   [\033[0;32m✓\033[0m] Installed CPA script to $INSTALL_PATH"
 
 
 # =================== DONE ====================
-echo -e "\033[1;32m󰄲  Installation successful:\033[0m For help run \033[1;37m\"CPA --help\"\033[0m"
+echo -e "\033[1;32m󰄲  Installation successful:\033[0m For help run \033[1;33mCPA --help\033[0m"
 exit 0

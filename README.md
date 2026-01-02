@@ -1,5 +1,9 @@
 # 10x Your CP Workflow: A Smooth Bash Script to Automate Parsing, Testing & Stressing
 
+```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Assistant/main/install.sh)"
+```
+
 Hello Codeforces fam,
 
 Over the past few months, I've been building and using a personal tool that **completely automates** my competitive programming workflow. From **parsing** problems to **checking solutions**, **stress testing**, **debugging**, and even **validating edge cases** — this tool has made my life 10x easier and smoother. And now, I’m excited to share it with you so that you can boost your productivity!
@@ -153,9 +157,7 @@ brew install gcc gdb jq curl git
 Just copy and paste this command into your terminal:
 
 <spoiler summary="one line copy paste install">
-```bash
-sudo sh -c "$(curl -fsSL https://raw.githubusercontent.com/sourav739397/All-In-ONE-cp/main/install.sh)"
-```
+
 </spoiler>
 <!-- 
 ```bash
