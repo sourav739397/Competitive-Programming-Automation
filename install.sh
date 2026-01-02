@@ -28,7 +28,7 @@ check_dependency() {
   done
 
   if [ ${#missing_deps[@]} -ne 0 ]; then
-    echo -e "\033[1;31m  Installation failed:\033[0m Install the missing dependencies and re-run the installer"
+    echo -e "\033[1;31m  Installation failed:\033[0m Install the missing dependencies and re-run the command"
     exit 1
   # else
   #   echo -e "\033[1;32m󰄲  All dependencies are satisfied.\033[0m"
