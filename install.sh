@@ -6,10 +6,11 @@ set -e
 # ==============================================
 
 # -------- Paths --------
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_PATH="/usr/local/bin"
 SCRIPT_NAME="CPA"
 CPA_DIR="$HOME/.CPA"
+TEMP_DIR=$(mktemp -d)
+REPO_URL="https://github.com/sourav739397/Competitive-Programming-Assistant"
 
 # -------- Colors --------
 C_OK="\033[0;32m"
@@ -17,6 +18,25 @@ C_ERR="\033[1;31m"
 C_INFO="\033[1;36m"
 C_WARN="\033[0;33m"
 C_RST="\033[0m"
+
+# ==============================================
+# Cleanup on exit
+# ==============================================
+cleanup() {
+  rm -rf "$TEMP_DIR"
+}
+trap cleanup EXIT
+
+# ==============================================
+# Download Repository
+# ==============================================
+download_repo() {
+  echo -e "${C_INFO}  Downloading Competitive-Programming-Assistant:${C_RST}"
+  cd "${TEMP_DIR}"
+  git clone --depth 1 -q "$REPO_URL" CPA
+  cd CPA
+  echo -e "   [${C_OK}✓${C_RST}] Downloaded repository"
+}
 
 # ==============================================
 # Dependency Check
@@ -123,6 +143,7 @@ setup_vscode_keybinds() {
 # Main
 # ==============================================
 check_dependencies
+download_repo
 install_files
 setup_vscode_keybinds
 
