@@ -12,12 +12,10 @@
 #  - Stress testing with generator
 #  - Time measurement
 #  - Colorful output with icons
-#  - self-update capability
 # ==============================================
 
 
 # Global flags for compilation
-# (need change to mapfile for dynamic includes)
 mapfile -t INCLUDES < <(find ~/.CPA -type d -print0 | xargs -0 -I{} echo "-I{}")
 FAST_COMPILE=(g++ "${INCLUDES[@]}" -fdiagnostics-color=always -std=c++23 -O2 -o)
 DEBUG_COMPILE=(g++ "${INCLUDES[@]}" -DLOCAL -fdiagnostics-color=always -std=c++23 -Wshadow -Wall -Wno-unused-result -g -fsanitize=address -fsanitize=undefined -fsanitize=signed-integer-overflow -fno-omit-frame-pointer -D_GLIBCXX_DEBUG -o)
@@ -490,7 +488,7 @@ case "$CMD" in
     ;;
   "test")
     if [[ -z "$SOURCE_FILE" ]]; then
-      echo -e "\033[1;31m  No source file:\033[0m For help run \033[1;33mCPA --help\033[0m"
+      echo -e "\033[0;31m  No source file:\033[0m For help run \033[1;33mCPA --help\033[0m"
       exit 1
     fi
 
@@ -520,7 +518,7 @@ case "$CMD" in
     ;;
   "add")
     if [[ -z "$SOURCE_FILE" ]]; then
-      echo -e "\033[1;31m  No source file:\033[0m For help run \033[1;33mCPA --help\033[0m"
+      echo -e "\033[0;31m  No source file:\033[0m For help run \033[1;33mCPA --help\033[0m"
       exit 1
     fi
     add_test_case
@@ -533,7 +531,7 @@ case "$CMD" in
   *)
     # Default mode - run the program
     if [[ -z "$SOURCE_FILE" ]]; then
-      echo -e "\033[1;31m  No source file:\033[0m For help run \033[1;33mCPA --help\033[0m"
+      echo -e "\033[0;31m  No source file:\033[0m For help run \033[1;33mCPA --help\033[0m"
       exit 1
     fi
     executable="${SOURCE_FILE%.*}"
