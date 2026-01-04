@@ -68,6 +68,7 @@ check_dependencies() {
 install_files() {
   echo -e "${C_INFO}  Installing Competitive-Programming-Assistant:${C_RST}"
 
+  local REPO_DIR="$TEMP_DIR/CPA"
   mkdir -p "$CPA_DIR/checkers"
 
   cp "$REPO_DIR/debug.h"   "$CPA_DIR/"
