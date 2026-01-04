@@ -398,7 +398,7 @@ save_failed_test() {
 
 # Normalize output for comparison
 normalize_output() {
-  tr '[:upper:]' '[:lower:]' | tr -s ' ' | sed 's/[[:space:]]*$//' | awk 'NF {print}'
+  tr -s ' ' | sed 's/[[:space:]]*$//' | awk 'NF {print}'
 }
 
 
