@@ -85,6 +85,7 @@ USAGE: CPA [COMMAND] [OPTIONS] <source.cpp | source.c>
                           - rcmp6.cpp  : Real number comparison (max error 1e-6)
                         NB: You can create your own checkers using testlib.h
                             and place them in $HOME/.CPA/checkers/
+                        More info: https://github.com/MikeMirzayanov/testlib
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   RESOURCES:
@@ -358,7 +359,7 @@ stress_test() {
       echo -e "\033[1;31m  WRONG ANSWER:\033[0m test #$testNum"
       echo -e "\033[4;36m  Input:\033[0m"
       cat input
-      print_comparison "outSlow" "outWrong"
+      print_comparison "outWrong" "outSlow"
 
       # Ask if the user wants to save it
       echo -ne "\033[1;33m󰡯\033[0m  Save failed test case? (y/N):"
