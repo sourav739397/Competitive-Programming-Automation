@@ -34,6 +34,9 @@ SLOW_SOLUTION="slow.cpp"
 GENERATOR="gen.cpp"
 TEST_COUNT=5000
 
+# All info files stored here(sample i/o, time limits, checkers, etc.)
+INFO_DIR="./.info"
+mkdir -p "$INFO_DIR"
 
 # ================ HELP FUNCTION ================
 show_help() {
@@ -42,7 +45,7 @@ show_help() {
 ║                !#  COMPETITIVE PROGRAMMING ASSISTANT                         ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-USAGE: CPA [OPTIONS] [COMMAND] <source_file.cpp>
+USAGE: CPA [COMMAND] [OPTIONS] <source.cpp | source.c>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   COMMANDS:
@@ -72,6 +75,16 @@ USAGE: CPA [OPTIONS] [COMMAND] <source_file.cpp>
 
   -d                    Debug mode (sanitizers + debug symbols)
                         Usage: CPA -d sol.cpp
+  -<file.cpp>           Specify custom checker executable using testlib.h
+                        Usage: CPA --test -fcmp.cpp sol.cpp
+                        Available checkers are stored in $HOME/.CPA/checkers/
+                        Some common checkers:
+                          - lcmp.cpp   : Lines, ignore whitespace
+                          - fcmp.cpp   : Lines, doesn't ignore whitespace
+                          - nyesno.cpp : Multiple YES/NO (case insensitive)
+                          - rcmp6.cpp  : Real number comparison (max error 1e-6)
+                        NB: You can create your own checkers using testlib.h
+                            and place them in $HOME/.CPA/checkers/
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   RESOURCES:
@@ -128,26 +141,23 @@ parse_problem() {
 
   local base_name="${SOURCE_FILE%.*}"
 
-  # create .info directory if not exists
-  local dir="./.info"
-  mkdir -p "$dir"
-  echo "$time_limit_sec" > "${dir}/${base_name}_time_limit.txt"
+  echo "$time_limit_sec" > "${INFO_DIR}/${base_name}_time_limit.txt"
 
   # clean old test cases
-  rm -f $dir/${base_name}_sample*.{in,out}
+  rm -f ${INFO_DIR}/${base_name}_sample*.{in,out}
 
   # Save test cases with problem name prefix
   local index=1
   echo "$tests" | jq -c '.[]' | while read -r test; do
     local input=$(echo "$test" | jq -r '.input')
     local output=$(echo "$test" | jq -r '.output')
-    echo "$input" > "${dir}/${base_name}_sample${index}.in"
-    echo "$output" > "${dir}/${base_name}_sample${index}.out"
+    echo "$input" > "${INFO_DIR}/${base_name}_sample${index}.in"
+    echo "$output" > "${INFO_DIR}/${base_name}_sample${index}.out"
     # echo -e "󰄲  Saved: ${base_name}_sample${index}.in & ${base_name}_sample${index}.out"
     ((index++))
   done
 
-  local total=$(ls "$dir/${base_name}_sample"*.in 2>/dev/null | wc -l)
+  local total=$(ls "${INFO_DIR}/${base_name}_sample"*.in 2>/dev/null | wc -l)
   echo -e "\033[1;32m  Sample saved:\033[0m $base_name.cpp\033[1;35m[$total]\033[0m"
 
   # Display problem information in tree style
@@ -193,20 +203,18 @@ compile_file() {
 
 # ================ RUN TEST CASE ================
 run_test() {
-  local executable=$1
-  local total_tests=0
-  local passed_tests=0
+  local executable=$1 total_tests=0 passed_tests=0
   
   # Read timeout duration from time limit file
   local problem_name="$executable"
-  local time_limit_file="./.info/${problem_name}_time_limit.txt"
+  local time_limit_file="${INFO_DIR}/${problem_name}_time_limit.txt"
   local timeout_duration="$TIMEOUT_DURATION"
   
   if [[ -f "$time_limit_file" ]]; then
     timeout_duration=$(cat "$time_limit_file")
   fi
-    
-  for input_file in $(ls ./.info/${executable}_sample*.in 2>/dev/null | sort -V); do
+  
+  for input_file in $(ls "${INFO_DIR}/${executable}_sample"*.in 2>/dev/null | sort -V); do
     [[ -f "$input_file" ]] || continue
       
     local index="${input_file//[^0-9]/}"
@@ -216,7 +224,7 @@ run_test() {
       
     # Check if output file exists
     if [[ ! -f "$output_file" ]]; then
-      echo -e "\033[1;31m  Missing output for test $index!\033[0m"
+      echo -e "\033[1;37m  Sample Test #$index:\033[0m \033[0;31mEXPECTED OUTPUT MISSING\033[0m"
       continue
     fi
       
@@ -245,22 +253,31 @@ run_test() {
     fi
         
     # Compare outputs
-    # if cmp -s <(normalize_output < output.out) <(normalize_output < "$output_file"); then (case insensitive, ignore trailing spaces)
-    if cmp -s output.out "$output_file"; then
+    if [[ -f "${INFO_DIR}/${checker_exc}" ]]; then
+      "${INFO_DIR}/${checker_exc}" "${input_file}" output.out "${output_file}" 2> checker.log
+      checker_status=$?
+    else
+      cmp -s <(normalize_output < output.out) <(normalize_output < "$output_file") #case insensitive, ignore trailing spaces
+      # cmp -s output.out "${output_file}"
+      checker_status=$?
+    fi
+
+    # Compare outputs
+    if [[ $checker_status -eq 0 ]]; then
       ((passed_tests++))
       echo -e "\033[1;37m󰄲  Sample Test #$index:\033[0m \033[1;32mACCEPTED\033[0m (\033[0;33mTime: ${execution_time}ms\033[0m)"
     else
       echo -e "\033[1;37m  Sample Test #$index:\033[0m \033[1;31mWRONG ANSWER\033[0m (\033[0;33mTime: ${execution_time}ms\033[0m)"
       echo -e "\033[4;36m  Input:\033[0m"
-      cat  "$input_file"
-      print_comparison "$output_file" "output.out"
+      cat  "${input_file}"
+      print_comparison "output.out" "${output_file}"
+      cat checker.log 2>/dev/null
     fi
   done
     
   # Cleanup
-  rm -f output.out runtime.err "$executable" 2>/dev/null
+  rm -f checker.log output.out runtime.err "$executable" 2>/dev/null
   
-  # Final Score
   echo -ne "\033[1;36m  Final Score: \033[0m"
   echo -e "\033[1;31m$((total_tests - passed_tests))\033[0m /\033[1;32m $passed_tests\033[0m / \033[1;37m$total_tests\033[0m"
 }
@@ -268,12 +285,10 @@ run_test() {
 
 # ================ ADD TEST CASE ================
 add_test_case() {
-  local dir="./.info"
-  mkdir -p "$dir"
   local problem_name="${SOURCE_FILE%.*}"
-  local count=$(ls $dir/${problem_name}_sample*.in 2>/dev/null | wc -l)
-  local new_input="$dir/${problem_name}_sample$((count + 1)).in"
-  local new_output="$dir/${problem_name}_sample$((count + 1)).out"
+  local count=$(ls ${INFO_DIR}/${problem_name}_sample*.in 2>/dev/null | wc -l)
+  local new_input="${INFO_DIR}/${problem_name}_sample$((count + 1)).in"
+  local new_output="${INFO_DIR}/${problem_name}_sample$((count + 1)).out"
   
   echo -e "\033[0;33m \033[0m Enter input (press Ctrl+D when finished):"
   cat > "$new_input"
@@ -371,15 +386,13 @@ stress_test() {
 save_failed_test() {
   local input=$1 output=$2 problem_name=$3
   problem_name="${problem_name%.*}"
-  local dir="./.info"
-  mkdir -p "$dir"
 
-  local prefix="$dir/${problem_name}_sample$(( $(ls "$dir/${problem_name}_sample"*.in 2>/dev/null | wc -l) + 1 ))"
+  local prefix="${INFO_DIR}/${problem_name}_sample$(( $(ls "${INFO_DIR}/${problem_name}_sample"*.in 2>/dev/null | wc -l) + 1 ))"
 
   cp "$input" "${prefix}.in"
   cp "$output" "${prefix}.out"
 
-  local total=$(ls "$dir/${problem_name}_sample"*.in 2>/dev/null | wc -l)
+  local total=$(ls "${INFO_DIR}/${problem_name}_sample"*.in 2>/dev/null | wc -l)
   echo -e "\033[1;32m  Sample saved:\033[0m $problem_name.cpp\033[1;35m[$total]\033[0m"
 }
 
@@ -392,44 +405,27 @@ normalize_output() {
 
 # =============== PRINT COMPARISON ================
 print_comparison() {
-  local expected="$1"
-  local actual="$2"
-
-  local expected_lines actual_lines max_file_lines
-  expected_lines=$(wc -l < "$expected")
-  actual_lines=$(wc -l < "$actual")
-  max_file_lines=$(( expected_lines > actual_lines ? expected_lines : actual_lines ))
-
-  # echo -e "\033[4;36m  Comparison:\033[0m"
-  line_num=1
-  exec 3<"$expected" 4<"$actual"  # Open files for reading
+  local output="$1" expected="$2"
+  local max_lines=$(( $(wc -l < "$output") > $(wc -l < "$expected") ? $(wc -l < "$output") : $(wc -l < "$expected") ))
 
   # Print the top border and column headers
   echo "┌────┬────────────────────────────────────┬────────────────────────────────────┐"
-  echo -e  "│ L  │            \033[1;35mOutput\033[0m                  │              \033[1;33mExpected\033[0m              │"
+  echo -e  "│ L  │            \033[1;31mOutput\033[0m                  │              \033[1;32mExpected\033[0m              │"
   echo "└────┴────────────────────────────────────┴────────────────────────────────────┘"
 
-  while (( line_num <= max_file_lines )); do
-    read -r o_line <&3
-    read -r a_line <&4
-
-    # If one line is empty, print it as blank
-    [[ -z "$o_line" ]] && o_line=" "  
-    [[ -z "$a_line" ]] && a_line=" "
+  # Compare line by line
+  for ((line_num=1; line_num<=max_lines; line_num++)); do
+    lineO=$(sed -n "${line_num}p" "$output")
+    lineE=$(sed -n "${line_num}p" "$expected")
 
     # Apply colors to only the Output column
-    if [[ "$o_line" == "$a_line" ]]; then
-      # Green for matching lines in Output
-      printf "│ %-2s │ \033[0;32m%-34s\033[0m │ %-34s │\n" "$line_num" "$a_line" "$o_line"
+    if [[ "$lineO" == "$lineE" ]]; then
+      printf "│ %-2s │ \033[0;32m%-34s\033[0m │ %-34s │\n" "$line_num" "$lineO" "$lineE"
     else
-      # Red for differing lines in Output
-      printf "│ %-2s │ \033[0;31m%-34s\033[0m │ %-34s │\n" "$line_num" "$a_line" "$o_line"
+      printf "│ %-2s │ \033[0;31m%-34s\033[0m │ %-34s │\n" "$line_num" "$lineO" "$lineE"
     fi
-
-    ((line_num++))
   done
   echo "└────┴────────────────────────────────────┴────────────────────────────────────┘"
-  exec 3<&- 4<&-
 }
 
 
@@ -469,12 +465,17 @@ while [[ $# -gt 0 ]]; do
       COMPILE_SCRIPT=("${DEBUG_COMPILE[@]}")
       shift
       ;;
+    -*.cpp)
+      CHECKER="${1#-}"
+      CHECKER_DIR="$HOME/.CPA/checkers"
+      shift
+      ;;
     *.cpp|*.c)
       SOURCE_FILE="$1"
       shift
       ;;
     *)
-      echo -e "\033[1;31m  Unknown command [$1]:\033[0m For help run \033[1;33mCPA --help\033[0m"
+      echo -e "\033[0;31m  Unknown command [$1]:\033[0m For help run \033[1;33mCPA --help\033[0m"
       exit 1
       ;;
   esac
@@ -492,10 +493,24 @@ case "$CMD" in
       exit 1
     fi
 
-    # Complile
+    # Complile the source file
     executable="${SOURCE_FILE%.*}"
     if ! compile_file "$SOURCE_FILE" "$executable"; then
       exit 1
+    fi
+
+    # Prepare Checker
+    checker_exc="${CHECKER%.*}"
+    if [[ -n "$CHECKER" && -f "$CHECKER_DIR/$CHECKER" ]]; then
+      echo -e "\033[1;36m  Checker found:\033[0m $CHECKER"
+      if [[ ! -f "${INFO_DIR}/${checker_exc}" ]]; then
+        echo -e "\033[1;35m  Compiling Checker:\033[0m $CHECKER"
+        if ! "${FAST_COMPILE[@]}" "${INFO_DIR}/${checker_exc}" "${CHECKER_DIR}/${CHECKER}"; then
+          echo -e "\033[1;31m  Checker compilation failed:\033[0m using default comparison"
+        else
+          echo -e "\033[1;32m󰄲  Checker compilation successful:\033[0m ${CHECKER}"
+        fi
+      fi
     fi
 
     # Checking test cases
