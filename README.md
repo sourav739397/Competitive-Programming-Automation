@@ -3,5 +3,5 @@
 ## Automated installation
 Run the command below:
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Assistant/main/install.sh)"
+curl -fsSL https://raw.githubusercontent.com/sourav739397/Competitive-Programming-Assistant/main/install.sh | bash
 ```
