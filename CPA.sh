@@ -216,7 +216,7 @@ run_test() {
   for input_file in $(ls "${INFO_DIR}/${executable}_sample"*.in 2>/dev/null | sort -V); do
     [[ -f "$input_file" ]] || continue
       
-    local index="${input_file//[^0-9]/}"
+    local index=$(basename "$input_file" | sed -E 's/.*_sample([0-9]+)\.in/\1/')
     local output_file="${input_file%.in}.out"
       
     ((total_tests++))
@@ -244,7 +244,7 @@ run_test() {
       
     # Handle runtime errors
     if (( exit_code != 0 )); then
-      echo -e "\033[1;37m  Test #$index:\033[0m \033[1;31mRUNTIME ERROR\033[0m"
+      echo -e "\033[1;37m  Sample Test #$index:\033[0m \033[1;31mRUNTIME ERROR\033[0m"
       if [[ -s runtime.err ]]; then
         echo -e "\033[31m$(cat runtime.err)\033[0m"
       fi
