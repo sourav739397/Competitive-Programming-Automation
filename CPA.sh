@@ -408,9 +408,9 @@ print_comparison() {
   local max_lines=$(( $(wc -l < "$output") > $(wc -l < "$expected") ? $(wc -l < "$output") : $(wc -l < "$expected") ))
 
   # Print the top border and column headers
-  echo "┌────┬────────────────────────────────────┬────────────────────────────────────┐"
+  echo "┌────┬──────────────────────────────────┬──────────────────────────────────┐"
   echo -e  "│ L  │            \033[1;31mOutput\033[0m                  │              \033[1;32mExpected\033[0m              │"
-  echo "└────┴────────────────────────────────────┴────────────────────────────────────┘"
+  echo "└────┴──────────────────────────────────┴──────────────────────────────────┘"
 
   # Compare line by line
   for ((line_num=1; line_num<=max_lines; line_num++)); do
@@ -419,12 +419,12 @@ print_comparison() {
 
     # Apply colors to only the Output column
     if [[ "$lineO" == "$lineE" ]]; then
-      printf "│ %-2s │ \033[0;32m%-34s\033[0m │ %-34s │\n" "$line_num" "$lineO" "$lineE"
+      printf "│ %-2s │ \033[0;32m%-32s\033[0m │ %-32s │\n" "$line_num" "$lineO" "$lineE"
     else
-      printf "│ %-2s │ \033[0;31m%-34s\033[0m │ %-34s │\n" "$line_num" "$lineO" "$lineE"
+      printf "│ %-2s │ \033[0;31m%-32s\033[0m │ %-32s │\n" "$line_num" "$lineO" "$lineE"
     fi
   done
-  echo "└────┴────────────────────────────────────┴────────────────────────────────────┘"
+  echo "└────┴─────────────────────────────────┴──────────────────────────────────┘"
 }
 
 
