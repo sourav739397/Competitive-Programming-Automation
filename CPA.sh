@@ -539,7 +539,7 @@ case "$CMD" in
       exit 1
     fi  
     echo -e "\033[1;34m  Running:\033[0m $SOURCE_FILE"
-    timeout --foreground 100 ./$executable
+    ./$executable
     # rm -f "$executable" 2>/dev/null
     ;;
 esac
