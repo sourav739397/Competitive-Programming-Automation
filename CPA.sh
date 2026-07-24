@@ -17,8 +17,34 @@
 
 # Global flags for compilation
 mapfile -t INCLUDES < <(find ~/.CPA -type d -print0 | xargs -0 -I{} echo "-I{}")
-FAST_COMPILE=(g++ "${INCLUDES[@]}" -fdiagnostics-color=always -std=c++23 -O2 -o)
-DEBUG_COMPILE=(g++ "${INCLUDES[@]}" -DLOCAL -fdiagnostics-color=always -std=c++23 -Wshadow -Wall -Wno-unused-result -g -fsanitize=address -fsanitize=undefined -fsanitize=signed-integer-overflow -fno-omit-frame-pointer -D_GLIBCXX_DEBUG -o)
+# FAST_COMPILE=(g++ "${INCLUDES[@]}" -fdiagnostics-color=always -std=c++23 -O2 -o)
+# DEBUG_COMPILE=(g++ "${INCLUDES[@]}" -DLOCAL -fdiagnostics-color=always -std=c++23 -Wshadow -Wall -Wno-unused-result -g -fsanitize=address -fsanitize=undefined -fsanitize=signed-integer-overflow -fno-omit-frame-pointer -D_GLIBCXX_DEBUG -o)
+FAST_COMPILE=(
+    g++
+    "${INCLUDES[@]}"
+    -include "$HOME/.CPA/debug.h"
+    -fdiagnostics-color=always
+    -std=c++23
+    -O2
+    -o
+)
+
+DEBUG_COMPILE=(
+    g++
+    "${INCLUDES[@]}"
+    -DLOCAL
+    -include "$HOME/.CPA/debug.h"
+    -fdiagnostics-color=always
+    -std=c++23
+    -Wshadow -Wall -Wno-unused-result
+    -g
+    -fsanitize=address
+    -fsanitize=undefined
+    -fsanitize=signed-integer-overflow
+    -fno-omit-frame-pointer
+    -D_GLIBCXX_DEBUG
+    -o
+)
 
 # Default values
 CMD=""
